@@ -1,0 +1,62 @@
+import tkinter as tk
+from Crypto.Cipher import AES
+from Crypto.Util.Padding import pad
+import base64
+import os
+import socket
+
+# Key for AES-256
+key = os.urandom(32)
+
+def encrypt_message(message, key):
+    cipher = AES.new(key, AES.MODE_CBC)
+    ct_bytes = cipher.encrypt(pad(message.encode(), AES.block_size))
+    iv = base64.b64encode(cipher.iv).decode('utf-8')
+    ct = base64.b64encode(ct_bytes).decode('utf-8')
+    return iv, ct
+
+def send_message():
+    message = text_entry.get("1.0", tk.END).strip()
+    if not message:
+        output_label.config(text="Please enter a message to send.")
+        return
+
+    iv, encrypted_message = encrypt_message(message, key)
+    print(f"IV: {iv}")
+    print(f"Encrypted message: {encrypted_message}")
+
+    server_ip = "0.0.0.0"  # Localhost for demonstration
+    server_port = 3000
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            print(f"Trying to connect to {server_ip} on port {server_port}...")
+            s.connect((server_ip, server_port))
+            s.sendall(f"{iv}:{encrypted_message}".encode())
+            output_label.config(text="Message sent successfully.")
+    except ConnectionRefusedError:
+        output_label.config(text="Connection refused. Ensure the server is running and accessible.")
+    except Exception as e:
+        output_label.config(text=f"An error occurred: {e}")
+
+
+def reset_text():
+    text_entry.delete("1.0", tk.END)
+    output_label.config(text="")
+
+# Create sender GUI
+root = tk.Tk()
+root.title("Message Sender")
+
+text_entry = tk.Text(root, height=10, width=40)
+text_entry.pack(pady=10)
+
+send_button = tk.Button(root, text="Send", command=send_message)
+send_button.pack(pady=5)
+
+reset_button = tk.Button(root, text="Reset", command=reset_text)
+reset_button.pack(pady=5)
+
+output_label = tk.Label(root, text="", wraplength=300)
+output_label.pack(pady=10)
+
+root.mainloop()
