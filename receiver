@@ -1,0 +1,61 @@
+import tkinter as tk
+from Crypto.Cipher import AES
+from Crypto.Util.Padding import unpad
+import base64
+import socket
+
+# Use the same key as the sender
+key = base64.b64decode("your-base64-encoded-key-here")
+
+def decrypt_message(iv, ct, key):
+    iv = base64.b64decode(iv)
+    ct = base64.b64decode(ct)
+    cipher = AES.new(key, AES.MODE_CBC, iv)
+    pt = unpad(cipher.decrypt(ct), AES.block_size)
+    return pt.decode('utf-8')
+
+def start_server():
+    server_ip = '0.0.0.0'  # Localhost
+    server_port = 3000
+    
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            # Bind to the specified IP address and port
+            s.bind((server_ip, server_port))
+            s.listen()
+            print(f"Server listening on {server_ip}:{server_port}...")
+            conn, addr = s.accept()
+            with conn:
+                print('Connected by', addr)
+                data = conn.recv(1024).decode()
+                if data:
+                    iv, encrypted_message = data.split(':')
+                    decrypted_message = decrypt_message(iv, encrypted_message, key)
+                    display_message(decrypted_message)
+    except OSError as e:
+        print(f"OS error: {e}")
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
+
+def display_message(message):
+    message_text.delete("1.0", tk.END)
+    message_text.insert(tk.END, message)
+
+# Create receiver GUI
+root = tk.Tk()
+root.title("Message Receiver")
+
+message_text = tk.Text(root, height=10, width=40)
+message_text.pack(pady=10)
+
+start_button = tk.Button(root, text="Start Server", command=start_server)
+start_button.pack(pady=5)
+
+root.mainloop()
+
+
+# Call this to start the server when the button is pressed
+#start_server()
+
+
+
